@@ -52,11 +52,7 @@ class RATModel(BaseModel, validate_assignment=True, extra="forbid"):
 
     @property
     def display_fields(self) -> dict:
-        """A dictionary of which fields should be displayed by this model and their values.
-
-        Note that for the best possible display of classlists, all possible sets of keys for the
-        `display_fields` of a given class should form a nested sequence of sets.
-        """
+        """A dictionary of which fields should be displayed by this model and their values."""
         return self.__dict__
 
 
@@ -347,7 +343,7 @@ class Parameter(RATModel):
     mu: float = 0.0
     sigma: float = np.inf
 
-    show_priors: bool = Field(default=False, hidden=True)
+    show_priors: bool = False
 
     @model_validator(mode="after")
     def check_min_max(self) -> "Parameter":

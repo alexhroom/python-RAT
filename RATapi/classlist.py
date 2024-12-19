@@ -41,6 +41,7 @@ class ClassList(collections.UserList, Generic[T]):
 
     def __init__(self, init_list: Union[Sequence[T], T] = None, name_field: str = "name") -> None:
         self.name_field = name_field
+        self._class_handle = None
 
         # Set input as list if necessary
         if init_list and not (isinstance(init_list, Sequence) and not isinstance(init_list, str)):
@@ -57,25 +58,28 @@ class ClassList(collections.UserList, Generic[T]):
 
     def __str__(self):
         # `display_fields` gives more control over the items displayed from the list if available
-        if hasattr(self._class_handle, "display_fields"):
+        if not self.data:
+            return str([])
+        try: 
             model_display_fields = [model.display_fields for model in self.data]
-        # for other classes, we can fallback to __dict__
-        elif hasattr(self._class_handle, "__dict__"):
-            model_display_fields = [model.__dict__ for model in self.data]
-        else:
-            return str(self.data)
+            # get all items included in at least one list
+            # the list comprehension ensures they are in the order that they're in in the model
+            required_fields = list(set().union(*model_display_fields))
+            table_header = ["index"] + [i for i in list(self.data[0].__dict__) if i in required_fields]
+        except AttributeError:
+            try:
+                model_display_fields = [model.__dict__ for model in self.data]
+                table_header = ["index"] + list(self.data[0].__dict__)
+            except AttributeError:
+                return str(self.data)
 
         if any(model_display_fields):
             table = prettytable.PrettyTable()
-            # get item with largest number of field names
-            longest_fields = next(
-                f for f in model_display_fields if len(f) == max(len(f) for f in model_display_fields)
-            )
-            table.field_names = ["index"] + [field.replace("_", " ") for field in longest_fields]
+            table.field_names = table_header
             rows = []
             for index, model in enumerate(self.data):
                 row = [index]
-                for field in longest_fields:
+                for field in table.field_names[1:]:
                     value = getattr(model, field, "")
                     if isinstance(value, np.ndarray):
                         value = (
@@ -128,7 +132,7 @@ class ClassList(collections.UserList, Generic[T]):
         """Auxiliary routine of "__iadd__" used to enable wrapping."""
         if other and not (isinstance(other, Sequence) and not isinstance(other, str)):
             other = [other]
-        if not hasattr(self, "_class_handle"):
+        if self._class_handle is None:
             self._class_handle = self._determine_class_handle(self + other)
         self._check_classes(other)
         self._check_unique_name_fields(other)
@@ -178,13 +182,13 @@ class ClassList(collections.UserList, Generic[T]):
                 stacklevel=2,
             )
         if obj:
-            if not hasattr(self, "_class_handle"):
+            if self._class_handle is None:
                 self._class_handle = type(obj)
             self._check_classes([obj])
             self._check_unique_name_fields([obj])
             self.data.append(obj)
         else:
-            if not hasattr(self, "_class_handle"):
+            if self._class_handle is None:
                 raise TypeError(
                     "ClassList.append() called with keyword arguments for a ClassList without a class "
                     "defined. Call ClassList.append() with an object to define the class.",
@@ -225,13 +229,13 @@ class ClassList(collections.UserList, Generic[T]):
                 stacklevel=2,
             )
         if obj:
-            if not hasattr(self, "_class_handle"):
+            if self._class_handle is None:
                 self._class_handle = type(obj)
             self._check_classes([obj])
             self._check_unique_name_fields([obj])
             self.data.insert(index, obj)
         else:
-            if not hasattr(self, "_class_handle"):
+            if self._class_handle is None:
                 raise TypeError(
                     "ClassList.insert() called with keyword arguments for a ClassList without a class "
                     "defined. Call ClassList.insert() with an object to define the class.",
@@ -262,7 +266,7 @@ class ClassList(collections.UserList, Generic[T]):
         """Extend the ClassList by adding another sequence."""
         if other and not (isinstance(other, Sequence) and not isinstance(other, str)):
             other = [other]
-        if not hasattr(self, "_class_handle"):
+        if self._class_handle is None:
             self._class_handle = self._determine_class_handle(self + other)
         self._check_classes(other)
         self._check_unique_name_fields(other)

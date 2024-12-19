@@ -335,18 +335,18 @@ class Project(BaseModel, validate_assignment=True, extra="forbid"):
             type = fields[field].annotation
             if get_origin(type) == ClassList:
                 classlist = getattr(self, field)
-                if not hasattr(field, "_class_handle"):
+                if field._class_handle is None:
                     classlist._class_handle = get_args(type)[0]
 
         layers_field = self.layers
-        if not hasattr(layers_field, "_class_handle"):
+        if layers_field._class_handle is None:
             if self.absorption:
                 layers_field._class_handle = RATapi.models.AbsorptionLayer
             else:
                 layers_field._class_handle = RATapi.models.Layer
 
         contrast_field = self.contrasts
-        if not hasattr(contrast_field, "_class_handle"):
+        if contrast_field._class_handle is None:
             if self.calculation == Calculations.Domains:
                 contrast_field._class_handle = RATapi.models.ContrastWithRatio
             else:
