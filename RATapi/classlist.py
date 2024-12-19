@@ -56,31 +56,41 @@ class ClassList(collections.UserList, Generic[T]):
         super().__init__(init_list)
 
     def __str__(self):
-        try:
-            [model.__dict__ for model in self.data]
-        except AttributeError:
-            output = str(self.data)
+        # `display_fields` gives more control over the items displayed from the list if available
+        if hasattr(self._class_handle, "display_fields"):
+            model_display_fields = [model.display_fields for model in self.data]
+        # for other classes, we can fallback to __dict__
+        elif hasattr(self._class_handle, "__dict__"):
+            model_display_fields = [model.__dict__ for model in self.data]
         else:
-            if any(model.__dict__ for model in self.data):
-                table = prettytable.PrettyTable()
-                table.field_names = ["index"] + [key.replace("_", " ") for key in self.data[0].__dict__]
-                table.add_rows(
-                    [
-                        [index]
-                        + list(
-                            f"{'Data array: ['+' x '.join(str(i) for i in v.shape) if v.size > 0 else '['}]"
-                            if isinstance(v, np.ndarray)
-                            else "\n".join(element for element in v)
-                            if k == "model"
-                            else str(v)
-                            for k, v in model.__dict__.items()
+            return str(self.data)
+
+        if any(model_display_fields):
+            table = prettytable.PrettyTable()
+            # get item with largest number of field names
+            longest_fields = next(
+                f for f in model_display_fields if len(f) == max(len(f) for f in model_display_fields)
+            )
+            table.field_names = ["index"] + [field.replace("_", " ") for field in longest_fields]
+            rows = []
+            for index, model in enumerate(self.data):
+                row = [index]
+                for field in longest_fields:
+                    value = getattr(model, field, "")
+                    if isinstance(value, np.ndarray):
+                        value = (
+                            f"{'Data array: ['+' x '.join(str(i) for i in value.shape) if value.size > 0 else '['}]"
                         )
-                        for index, model in enumerate(self.data)
-                    ]
-                )
-                output = table.get_string()
-            else:
-                output = str(self.data)
+                    elif isinstance(value, list):
+                        value = "\n".join(str(element) for element in value)
+                    else:
+                        value = str(value)
+                    row.append(value)
+                rows.append(row)
+            table.add_rows(rows)
+            output = table.get_string()
+        else:
+            output = str(self.data)
         return output
 
     def __getitem__(self, index: Union[int, slice, str, T]) -> T:
