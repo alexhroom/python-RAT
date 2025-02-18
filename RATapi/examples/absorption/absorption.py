@@ -1,3 +1,5 @@
+"""An example for using absorption in RAT."""
+
 import pathlib
 
 import numpy as np
@@ -5,8 +7,18 @@ import numpy as np
 import RATapi as RAT
 
 
-def absorption():
-    """Custom layers model including absorption"""
+def absorption() -> (RAT.Project, RAT.outputs.Results):
+    """Run a custom layers model including absorption.
+
+    RAT allows the use of an imaginary, as well as real part of the SLD.
+    The effect of this is usually seen below the critical edge, and must sometimes be accounted for.
+
+    This is an example of a Custom Layers project using absorption. used here is Custom Layers.
+    It analyses a bilayer sample on a permalloy / gold substrate,
+    measured using polarised neutrons, against D2O and H2O, leading to 4 contrasts in total.
+    Absorption (i.e. imaginary SLD) is defined for Gold and the Permalloy,
+    to account for non-flat data below the critical edge.
+    """
     problem = RAT.Project(
         name="Absorption example",
         calculation="normal",
